@@ -106,6 +106,8 @@ class HeladeriaApp {
         this.setupElementos();
         this.configurarEventos();
         this.actualizarUI();
+        this.setupGlobalBarcodeCapture();
+        this.focusBarcodeInput();
     }
 
     setupElementos() {
@@ -197,6 +199,12 @@ class HeladeriaApp {
             // Productos Envasados (Venta)
             gridProductosEnvasados: document.getElementById('gridProductosEnvasados'),
             btnAgregarPoteCarrito: document.getElementById('btnAgregarPoteCarrito'), // Botón Potes Mostrador
+
+            // Lector de Código de Barras
+            barcodeInput: document.getElementById('barcode-input-gelato'),
+
+            // Código de barras del nuevo producto
+            nuevoProdBarcode: document.getElementById('nuevoProdBarcode'),
         };
     }
 
@@ -269,6 +277,11 @@ class HeladeriaApp {
         // 4. Botón Agregar Pote (Mostrador) - Aseguramos que existe el botón antes de agregar listener
         if (this.elementos.btnAgregarPoteCarrito) {
             this.elementos.btnAgregarPoteCarrito.addEventListener('click', () => this.agregarAlCarrito());
+        }
+
+        // 5. Lector de código de barras
+        if (this.elementos.barcodeInput) {
+            this.elementos.barcodeInput.addEventListener('keydown', (e) => this.handleBarcodeInput(e));
         }
 
         // Atajos de teclado
@@ -466,6 +479,7 @@ class HeladeriaApp {
         const nombre = this.elementos.nuevoProdNombre.value.trim();
         const precio = parseFloat(this.elementos.nuevoProdPrecio.value);
         const stock = parseInt(this.elementos.nuevoProdStock.value);
+        const barcode = this.elementos.nuevoProdBarcode ? this.elementos.nuevoProdBarcode.value.trim() : '';
 
         if (!nombre || isNaN(precio) || isNaN(stock)) {
             this.mostrarError('Por favor complete todos los campos correctamente');
@@ -476,7 +490,8 @@ class HeladeriaApp {
             id: Date.now().toString(),
             nombre,
             precio,
-            stock
+            stock,
+            barcode
         };
 
         this.productosEnvasados.push(nuevoProducto);
@@ -485,6 +500,7 @@ class HeladeriaApp {
         this.elementos.nuevoProdNombre.value = '';
         this.elementos.nuevoProdPrecio.value = '';
         this.elementos.nuevoProdStock.value = '';
+        if (this.elementos.nuevoProdBarcode) this.elementos.nuevoProdBarcode.value = '';
 
         this.guardarDatos();
         this.actualizarUIInventario();
@@ -504,12 +520,20 @@ class HeladeriaApp {
 
         this.elementos.tablaProductosStock.innerHTML = '';
 
+        if (this.productosEnvasados.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="5" style="text-align:center;color:#888;padding:14px">No hay productos envasados cargados</td>';
+            this.elementos.tablaProductosStock.appendChild(tr);
+            return;
+        }
+
         this.productosEnvasados.forEach(prod => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${prod.nombre}</td>
                 <td>$${prod.precio.toFixed(2)}</td>
                 <td>${prod.stock}</td>
+                <td style="font-size:0.85em;color:#aaa">${prod.barcode || '-'}</td>
                 <td>
                     <button class="btn btn-danger btn-small">✕</button>
                 </td>
@@ -555,7 +579,103 @@ class HeladeriaApp {
             this.elementos.contenedorMostrador.style.display = 'none';
             this.elementos.contenedorEnvasados.style.display = 'block';
             this.renderGridProductosVenta(); // Refrescar grid
+            this.focusBarcodeInput(); // Re-enfocar el campo de código de barras al cambiar a envasados
         }
+    }
+
+    // ============================================
+    // LECTOR DE CÓDIGO DE BARRAS
+    // ============================================
+
+    focusBarcodeInput() {
+        if (this.elementos.barcodeInput) {
+            this.elementos.barcodeInput.focus();
+        }
+    }
+
+    handleBarcodeInput(event) {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+
+        const barcode = event.target.value.trim();
+        if (!barcode) return;
+
+        // Buscar producto envasado por código de barras
+        const producto = this.productosEnvasados.find(p => p.barcode && p.barcode === barcode);
+
+        if (producto) {
+            this.agregarEnvasadoAlCarrito(producto);
+            event.target.value = '';
+            // Feedback visual: borde verde
+            event.target.style.borderColor = '#10b981';
+            event.target.style.boxShadow = '0 0 0 3px rgba(16,185,129,0.3)';
+            setTimeout(() => {
+                event.target.style.borderColor = '';
+                event.target.style.boxShadow = '';
+            }, 600);
+        } else {
+            // Producto no encontrado
+            this.mostrarError(`❌ Producto no encontrado con código: ${barcode}`);
+            event.target.value = '';
+            // Feedback visual: borde rojo
+            event.target.style.borderColor = '#ef4444';
+            event.target.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.3)';
+            setTimeout(() => {
+                event.target.style.borderColor = '';
+                event.target.style.boxShadow = '';
+            }, 600);
+        }
+    }
+
+    setupGlobalBarcodeCapture() {
+        let buffer = '';
+        let lastKeyTime = 0;
+        const maxInterKeyDelayMs = 120;
+
+        document.addEventListener('keydown', (e) => {
+            // Solo actuar si estamos en modo envasados
+            const modoEnvasadosActivo =
+                this.elementos.contenedorEnvasados &&
+                this.elementos.contenedorEnvasados.style.display !== 'none';
+            if (!modoEnvasadosActivo) return;
+
+            const activeEl = document.activeElement;
+            const activeTag = activeEl && activeEl.tagName ? activeEl.tagName.toLowerCase() : '';
+            const activeId = activeEl && activeEl.id ? activeEl.id : '';
+            // Si el foco está en otro campo (no el barcode), ignorar
+            const isTypingInOtherField =
+                (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') &&
+                activeId !== 'barcode-input-gelato';
+            if (isTypingInOtherField) return;
+
+            if (e.key === 'Enter') {
+                const barcode = buffer.trim();
+                buffer = '';
+                lastKeyTime = 0;
+                if (!barcode) return;
+
+                // Simular input en el campo para aprovechar handleBarcodeInput
+                if (this.elementos.barcodeInput) {
+                    this.elementos.barcodeInput.value = barcode;
+                    this.handleBarcodeInput({
+                        key: 'Enter',
+                        preventDefault: () => { },
+                        target: this.elementos.barcodeInput
+                    });
+                }
+                return;
+            }
+
+            if (e.key.length !== 1) return;
+            const now = Date.now();
+
+            if (lastKeyTime && (now - lastKeyTime) > maxInterKeyDelayMs) {
+                buffer = '';
+            }
+
+            lastKeyTime = now;
+            buffer += e.key;
+        });
     }
 
     agregarEnvasadoAlCarrito(producto) {
