@@ -205,6 +205,40 @@ class HeladeriaApp {
 
             // Código de barras del nuevo producto
             nuevoProdBarcode: document.getElementById('nuevoProdBarcode'),
+
+            // Buscador de productos envasados
+            buscadorProductos: document.getElementById('buscadorProductos'),
+
+            // Modales editar
+            modalEditarArticulo: document.getElementById('modalEditarArticulo'),
+            editArticuloId: document.getElementById('editArticuloId'),
+            editArticuloNombre: document.getElementById('editArticuloNombre'),
+            editArticuloPrecio: document.getElementById('editArticuloPrecio'),
+            editArticuloStock: document.getElementById('editArticuloStock'),
+            editArticuloBarcode: document.getElementById('editArticuloBarcode'),
+            btnGuardarEditArticulo: document.getElementById('btnGuardarEditArticulo'),
+            btnCancelarEditArticulo: document.getElementById('btnCancelarEditArticulo'),
+
+            modalEditarVenta: document.getElementById('modalEditarVenta'),
+            editVentaIdx: document.getElementById('editVentaIdx'),
+            editVentaDesc: document.getElementById('editVentaDesc'),
+            editVentaTotal: document.getElementById('editVentaTotal'),
+            editVentaFecha: document.getElementById('editVentaFecha'),
+            btnGuardarEditVenta: document.getElementById('btnGuardarEditVenta'),
+            btnCancelarEditVenta: document.getElementById('btnCancelarEditVenta'),
+
+            // Ventas tab
+            resumenVentasDiarias: document.getElementById('resumenVentasDiarias'),
+            filtroFechaVentas: document.getElementById('filtroFechaVentas'),
+            btnFiltrarVentas: document.getElementById('btnFiltrarVentas'),
+            btnMostrarTodasVentas: document.getElementById('btnMostrarTodasVentas'),
+            bodyHistorialVentas: document.getElementById('bodyHistorialVentas'),
+
+            ventaManualDesc: document.getElementById('ventaManualDesc'),
+            ventaManualPrecio: document.getElementById('ventaManualPrecio'),
+            ventaManualFecha: document.getElementById('ventaManualFecha'),
+            btnAgregarVentaManual: document.getElementById('btnAgregarVentaManual'),
+            btnLimpiarHistorial: document.getElementById('btnLimpiarHistorial'),
         };
     }
 
@@ -274,7 +308,7 @@ class HeladeriaApp {
             this.elementos.btnAgregarProducto.addEventListener('click', () => this.agregarProductoInventario());
         }
 
-        // 4. Botón Agregar Pote (Mostrador) - Aseguramos que existe el botón antes de agregar listener
+        // 4. Botón Agregar Pote (Mostrador)
         if (this.elementos.btnAgregarPoteCarrito) {
             this.elementos.btnAgregarPoteCarrito.addEventListener('click', () => this.agregarAlCarrito());
         }
@@ -282,6 +316,44 @@ class HeladeriaApp {
         // 5. Lector de código de barras
         if (this.elementos.barcodeInput) {
             this.elementos.barcodeInput.addEventListener('keydown', (e) => this.handleBarcodeInput(e));
+        }
+
+        // 6. Buscador de productos envasados
+        if (this.elementos.buscadorProductos) {
+            this.elementos.buscadorProductos.addEventListener('input', () => this.filtrarProductosBuscador());
+        }
+
+        // 7. Modales editar artículo
+        if (this.elementos.btnGuardarEditArticulo) {
+            this.elementos.btnGuardarEditArticulo.addEventListener('click', () => this.guardarEdicionArticulo());
+        }
+        if (this.elementos.btnCancelarEditArticulo) {
+            this.elementos.btnCancelarEditArticulo.addEventListener('click', () => this.cerrarModal('editarArticulo'));
+        }
+
+        // 8. Modales editar venta
+        if (this.elementos.btnGuardarEditVenta) {
+            this.elementos.btnGuardarEditVenta.addEventListener('click', () => this.guardarEdicionVenta());
+        }
+        if (this.elementos.btnCancelarEditVenta) {
+            this.elementos.btnCancelarEditVenta.addEventListener('click', () => this.cerrarModal('editarVenta'));
+        }
+
+        // 9. Ventas: filtro, historial, venta manual
+        if (this.elementos.btnFiltrarVentas) {
+            this.elementos.btnFiltrarVentas.addEventListener('click', () => this.renderVentasDiarias());
+        }
+        if (this.elementos.btnMostrarTodasVentas) {
+            this.elementos.btnMostrarTodasVentas.addEventListener('click', () => {
+                if (this.elementos.filtroFechaVentas) this.elementos.filtroFechaVentas.value = '';
+                this.renderVentasDiarias();
+            });
+        }
+        if (this.elementos.btnAgregarVentaManual) {
+            this.elementos.btnAgregarVentaManual.addEventListener('click', () => this.agregarVentaManual());
+        }
+        if (this.elementos.btnLimpiarHistorial) {
+            this.elementos.btnLimpiarHistorial.addEventListener('click', () => this.limpiarHistorial());
         }
 
         // Atajos de teclado
@@ -339,6 +411,13 @@ class HeladeriaApp {
         // Agregar clase active al botón y contenido clickeado
         boton.classList.add('active');
         this.elementos.tabContents[index].classList.add('active');
+
+        // Si abre la pestaña de Ventas, renderizar
+        const tabId = boton.getAttribute('data-tab');
+        if (tabId === 'tab-ventas') {
+            this.renderVentasDiarias();
+            this.renderHistorialVentas();
+        }
     }
 
     // ============================================
@@ -534,26 +613,69 @@ class HeladeriaApp {
                 <td>$${prod.precio.toFixed(2)}</td>
                 <td>${prod.stock}</td>
                 <td style="font-size:0.85em;color:#aaa">${prod.barcode || '-'}</td>
-                <td>
-                    <button class="btn btn-danger btn-small">✕</button>
+                <td style="display:flex;gap:6px;">
+                    <button class="btn btn-info btn-small btn-edit-art" title="Editar">✏️</button>
+                    <button class="btn btn-danger btn-small btn-del-art" title="Eliminar">✕</button>
                 </td>
             `;
-            tr.querySelector('button').addEventListener('click', () => this.eliminarProductoInventario(prod.id));
+            tr.querySelector('.btn-edit-art').addEventListener('click', () => this.abrirEditarArticulo(prod.id));
+            tr.querySelector('.btn-del-art').addEventListener('click', () => this.eliminarProductoInventario(prod.id));
             this.elementos.tablaProductosStock.appendChild(tr);
         });
     }
 
-    renderGridProductosVenta() {
+    abrirEditarArticulo(id) {
+        const prod = this.productosEnvasados.find(p => p.id === id);
+        if (!prod) return;
+        this.elementos.editArticuloId.value = prod.id;
+        this.elementos.editArticuloNombre.value = prod.nombre;
+        this.elementos.editArticuloPrecio.value = prod.precio;
+        this.elementos.editArticuloStock.value = prod.stock;
+        this.elementos.editArticuloBarcode.value = prod.barcode || '';
+        this.elementos.modalEditarArticulo.classList.add('active');
+    }
+
+    guardarEdicionArticulo() {
+        const id = this.elementos.editArticuloId.value;
+        const prod = this.productosEnvasados.find(p => p.id === id);
+        if (!prod) return;
+
+        const nombre = this.elementos.editArticuloNombre.value.trim();
+        const precio = parseFloat(this.elementos.editArticuloPrecio.value);
+        const stock = parseInt(this.elementos.editArticuloStock.value);
+        const barcode = this.elementos.editArticuloBarcode.value.trim();
+
+        if (!nombre || isNaN(precio) || isNaN(stock)) {
+            this.mostrarError('Por favor complete todos los campos correctamente');
+            return;
+        }
+
+        prod.nombre = nombre;
+        prod.precio = precio;
+        prod.stock = stock;
+        prod.barcode = barcode;
+
+        this.guardarDatos();
+        this.actualizarUIInventario();
+        this.cerrarModal('editarArticulo');
+        this.mostrarInfo('✅ Artículo actualizado correctamente');
+    }
+
+    renderGridProductosVenta(filtro = '') {
         if (!this.elementos.gridProductosEnvasados) return;
 
         this.elementos.gridProductosEnvasados.innerHTML = '';
 
-        if (this.productosEnvasados.length === 0) {
-            this.elementos.gridProductosEnvasados.innerHTML = '<p class="empty-state">No hay productos disponibles.</p>';
+        const productosFiltrados = filtro
+            ? this.productosEnvasados.filter(p => p.nombre.toLowerCase().includes(filtro.toLowerCase()))
+            : this.productosEnvasados;
+
+        if (productosFiltrados.length === 0) {
+            this.elementos.gridProductosEnvasados.innerHTML = `<p class="empty-state">${filtro ? 'No se encontraron productos con ese nombre.' : 'No hay productos disponibles.'}</p>`;
             return;
         }
 
-        this.productosEnvasados.forEach(prod => {
+        productosFiltrados.forEach(prod => {
             const div = document.createElement('div');
             div.className = `product-card ${prod.stock <= 0 ? 'no-stock' : ''}`;
             div.innerHTML = `
@@ -568,6 +690,11 @@ class HeladeriaApp {
 
             this.elementos.gridProductosEnvasados.appendChild(div);
         });
+    }
+
+    filtrarProductosBuscador() {
+        const filtro = this.elementos.buscadorProductos ? this.elementos.buscadorProductos.value.trim() : '';
+        this.renderGridProductosVenta(filtro);
     }
 
     actualizarModoVenta() {
@@ -805,8 +932,10 @@ class HeladeriaApp {
 
                 let importSabores = 0;
                 let importPrecios = 0;
+                let importVentas = 0;
+                let importProductos = 0;
 
-                // Hoja Sabores (si existe)
+                // ---- Hoja Sabores ----
                 const hojaSabores = workbook.Sheets['Sabores'] || workbook.Sheets[workbook.SheetNames.find(n => /sabor/i.test(n))];
                 if (hojaSabores) {
                     const jsonSab = XLSX.utils.sheet_to_json(hojaSabores);
@@ -823,12 +952,11 @@ class HeladeriaApp {
                     });
                 }
 
-                // Hoja Precios (si existe)
+                // ---- Hoja Precios ----
                 const hojaPrecios = workbook.Sheets['Precios'] || workbook.Sheets[workbook.SheetNames.find(n => /precio/i.test(n))];
                 if (hojaPrecios) {
                     const jsonPre = XLSX.utils.sheet_to_json(hojaPrecios);
                     jsonPre.forEach(row => {
-                        // Espera filas tipo {Key: '1_gusto', Value: 1.00} o {Nombre: '1_gusto', Precio: 1.00}
                         const keys = Object.keys(row);
                         const keyKey = keys.find(k => /key|nombre|campo/i.test(k));
                         const keyValue = keys.find(k => /value|precio|valor|amount/i.test(k));
@@ -843,19 +971,105 @@ class HeladeriaApp {
                     });
                 }
 
+                // ---- Hoja Ventas (nueva estructura: una fila por venta) ----
+                const hojaVentas = workbook.Sheets['Ventas'] || workbook.Sheets[workbook.SheetNames.find(n => /venta/i.test(n))];
+                if (hojaVentas) {
+                    const jsonVentas = XLSX.utils.sheet_to_json(hojaVentas);
+                    let ventasImportadas = [];
+                    let totalImportado = 0;
+
+                    jsonVentas.forEach(row => {
+                        // Formato nuevo: Fecha, Total, Items (JSON string)
+                        const fecha = row['Fecha'] || row['fecha'] || row['Fecha de Venta'];
+                        const total = parseFloat(row['Total'] || row['total'] || row['Total de la Venta'] || 0);
+                        const itemsRaw = row['Items'] || row['items'] || '';
+
+                        if (!fecha || isNaN(total)) return;
+
+                        // Intentar parsear Items JSON
+                        let items = [];
+                        if (itemsRaw) {
+                            try { items = JSON.parse(itemsRaw); } catch (e) {
+                                // Si no es JSON, usar descripción directa
+                                const desc = row['Descripci\u00f3n'] || row['Descripcion'] || String(itemsRaw);
+                                items = [{ descripcion: desc, precio: total }];
+                            }
+                        } else {
+                            // Formato antiguo: solo fecha y total
+                            const descOld = row['Descripci\u00f3n del Producto'] || row['Descripcion'] || 'Venta importada';
+                            items = [{ descripcion: descOld, precio: total }];
+                        }
+
+                        ventasImportadas.push({
+                            fecha: new Date(fecha).toISOString(),
+                            total: total,
+                            items: items
+                        });
+                        totalImportado += total;
+                        importVentas++;
+                    });
+
+                    if (ventasImportadas.length > 0) {
+                        // Reemplazar historial con el importado
+                        this.ventas = ventasImportadas;
+                        this.ventasTotales = totalImportado;
+                    }
+                }
+
+                // ---- Hoja Productos Envasados ----
+                const hojaProductos = workbook.Sheets['Productos'] || workbook.Sheets[workbook.SheetNames.find(n => /producto|envasado|kiosco/i.test(n))];
+                if (hojaProductos) {
+                    const jsonProd = XLSX.utils.sheet_to_json(hojaProductos);
+                    let productosImportados = [];
+                    jsonProd.forEach(row => {
+                        const nombre = row['Nombre'] || row['nombre'] || row['Producto'];
+                        const precio = parseFloat(row['Precio'] || row['precio'] || 0);
+                        const stock = parseInt(row['Stock'] || row['stock'] || 0);
+                        const barcode = row['Codigo'] || row['codigo'] || row['C\u00f3digo'] || row['Barcode'] || '';
+                        const id = row['ID'] || row['id'] || Date.now().toString() + Math.random();
+                        if (nombre && !isNaN(precio)) {
+                            productosImportados.push({ id: String(id), nombre: String(nombre).trim(), precio, stock: isNaN(stock) ? 0 : stock, barcode: String(barcode).trim() });
+                            importProductos++;
+                        }
+                    });
+                    if (productosImportados.length > 0) {
+                        this.productosEnvasados = productosImportados;
+                    }
+                }
+
+                // ---- Hoja Stock Insumos ----
+                const hojaStock = workbook.Sheets['StockInsumos'] || workbook.Sheets[workbook.SheetNames.find(n => /stock|insumo/i.test(n))];
+                if (hojaStock) {
+                    const jsonStock = XLSX.utils.sheet_to_json(hojaStock);
+                    jsonStock.forEach(row => {
+                        const clave = row['Clave'] || row['clave'] || row['Key'];
+                        const valor = parseInt(row['Valor'] || row['valor'] || row['Value'] || 0);
+                        if (clave && this.stockInsumos.hasOwnProperty(clave) && !isNaN(valor)) {
+                            this.stockInsumos[clave] = valor;
+                        }
+                    });
+                }
+
                 this.guardarDatos();
                 this.actualizarUI();
+                // Refrescar pestaña Ventas en tiempo real (si está visible)
+                this.renderVentasDiarias();
+                this.renderHistorialVentas();
                 if (this.elementos.inputExcel) this.elementos.inputExcel.value = '';
 
-                let mensaje = 'Proceso de importación finalizado.';
-                if (importSabores) mensaje += `\nSabores importados: ${importSabores}`;
-                if (importPrecios) mensaje += `\nPrecios actualizados: ${importPrecios}`;
-                if (!importSabores && !importPrecios) mensaje = 'No se detectaron datos válidos en el archivo.';
+                let mensaje = '\u2705 Importaci\u00f3n completada.';
+                if (importSabores) mensaje += `<br>Sabores importados: <b>${importSabores}</b>`;
+                if (importPrecios) mensaje += `<br>Precios actualizados: <b>${importPrecios}</b>`;
+                if (importVentas) mensaje += `<br>Ventas restauradas: <b>${importVentas}</b>`;
+                if (importProductos) mensaje += `<br>Productos envasados: <b>${importProductos}</b>`;
+                if (!importSabores && !importPrecios && !importVentas && !importProductos) {
+                    mensaje = 'No se detectaron datos v\u00e1lidos en el archivo.';
+                }
 
-                this.mostrarInfo(mensaje.replace(/\n/g, '<br>'));
+                this.mostrarInfo(mensaje);
             } catch (err) {
                 console.error(err);
-                this.mostrarError('Error al procesar el archivo Excel');
+                this.mostrarError('Error al procesar el archivo Excel: ' + (err.message || ''));
             }
         };
         reader.readAsArrayBuffer(file);
@@ -864,63 +1078,67 @@ class HeladeriaApp {
     exportarExcel() {
         try {
             if (typeof XLSX === 'undefined') {
-                throw new Error('Librería XLSX no cargada. Verifica que el script de SheetJS esté incluido en el HTML.');
+                throw new Error('Librer\u00eda XLSX no cargada.');
             }
-
-            // Hoja de sabores
-            const datosSabores = this.sabores.map(s => ({ Sabor: s }));
-
-            // Hoja de precios (key, value)
-            const datosPrecios = Object.keys(this.precios).map(k => ({ Key: k, Value: this.precios[k] }));
 
             const wb = XLSX.utils.book_new();
-            const wsSab = XLSX.utils.json_to_sheet(datosSabores);
-            XLSX.utils.book_append_sheet(wb, wsSab, 'Sabores');
 
-            const wsPre = XLSX.utils.json_to_sheet(datosPrecios);
-            XLSX.utils.book_append_sheet(wb, wsPre, 'Precios');
+            // ---- Hoja 1: Sabores ----
+            const datosSabores = this.sabores.map(s => ({ Sabor: s }));
+            if (datosSabores.length === 0) datosSabores.push({ Sabor: '(sin sabores)' });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosSabores), 'Sabores');
 
-            // Hoja de ventas (historial detallado)
+            // ---- Hoja 2: Precios ----
+            const datosPrecios = Object.keys(this.precios).map(k => ({ Key: k, Value: this.precios[k] }));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosPrecios), 'Precios');
+
+            // ---- Hoja 3: Ventas (UNA FILA POR VENTA, Items como JSON para reimportar) ----
             const datosVentas = [];
             (this.ventas || []).forEach(venta => {
-                if (venta && venta.items) {
-                    venta.items.forEach(item => {
-                        datosVentas.push({
-                            'Fecha de Venta': venta.fecha,
-                            'Total de la Venta': venta.total,
-                            'Descripción del Producto': item.descripcion,
-                            'Precio del Producto': item.precio
-                        });
-                    });
-                }
-            });
-
-            // Si no hay ventas, agregar una fila informativa
-            if (datosVentas.length === 0) {
+                if (!venta) return;
                 datosVentas.push({
-                    'Fecha de Venta': 'No se encontraron ventas.',
-                    'Total de la Venta': '',
-                    'Descripción del Producto': '',
-                    'Precio del Producto': ''
+                    'Fecha': venta.fecha,
+                    'Total': venta.total,
+                    'Items': JSON.stringify(venta.items || []),
+                    // Columnas legibles extra (solo para visualizar en Excel)
+                    'Fecha Legible': new Date(venta.fecha).toLocaleDateString('es-AR') + ' ' + new Date(venta.fecha).toLocaleTimeString('es-AR'),
+                    'Descripci\u00f3n': venta.items && venta.items.length > 0 ? venta.items.map(i => i.descripcion).join(' + ') : ''
                 });
+            });
+            if (datosVentas.length === 0) {
+                datosVentas.push({ 'Fecha': '', 'Total': '', 'Items': '', 'Fecha Legible': 'Sin ventas', 'Descripci\u00f3n': '' });
             }
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosVentas), 'Ventas');
 
-            const wsVentas = XLSX.utils.json_to_sheet(datosVentas);
-            XLSX.utils.book_append_sheet(wb, wsVentas, 'Ventas');
+            // ---- Hoja 4: Resumen ----
+            const datosResumen = [
+                { Clave: 'ventasTotales', Valor: this.ventasTotales },
+                { Clave: 'cantidadVentas', Valor: (this.ventas || []).length }
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosResumen), 'Resumen');
 
-            // Hoja resumen con totales
-            const datosResumen = [{ Clave: 'ventasTotales', Valor: this.ventasTotales }];
-            const wsRes = XLSX.utils.json_to_sheet(datosResumen);
-            XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen');
+            // ---- Hoja 5: Productos Envasados ----
+            const datosProductos = (this.productosEnvasados || []).map(p => ({
+                'ID': p.id,
+                'Nombre': p.nombre,
+                'Precio': p.precio,
+                'Stock': p.stock,
+                'Codigo': p.barcode || ''
+            }));
+            if (datosProductos.length === 0) datosProductos.push({ 'ID': '', 'Nombre': '(sin productos)', 'Precio': '', 'Stock': '', 'Codigo': '' });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosProductos), 'Productos');
 
-            // Generar arraybuffer y forzar descarga via blob (más confiable en navegadores)
+            // ---- Hoja 6: Stock Insumos ----
+            const datosStock = Object.keys(this.stockInsumos).map(k => ({ Clave: k, Valor: this.stockInsumos[k] }));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosStock), 'StockInsumos');
+
+            // Generar descarga
             const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             const blob = new Blob([wbout], { type: 'application/octet-stream' });
             const fecha = new Date().toISOString().slice(0, 10);
-            const filename = `Heladeria_Export_${fecha}.xlsx`;
+            const filename = `PuntoGelato_Backup_${fecha}.xlsx`;
 
             if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-                // IE/Edge
                 window.navigator.msSaveOrOpenBlob(blob, filename);
             } else {
                 const url = URL.createObjectURL(blob);
@@ -929,17 +1147,15 @@ class HeladeriaApp {
                 a.download = filename;
                 document.body.appendChild(a);
                 a.click();
-                setTimeout(() => {
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                }, 100);
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
             }
 
-            this.mostrarInfo('Archivo Excel exportado correctamente');
+            const cantVentas = (this.ventas || []).length;
+            const cantProd = (this.productosEnvasados || []).length;
+            this.mostrarInfo(`\u2705 Backup exportado correctamente.<br>Incluye: <b>${cantVentas}</b> ventas y <b>${cantProd}</b> productos envasados.`);
         } catch (error) {
             console.error('Error en exportarExcel:', error);
-            const mensaje = error && error.message ? `Error al exportar Excel: ${error.message}` : 'Error al exportar Excel';
-            this.mostrarError(mensaje);
+            this.mostrarError('Error al exportar Excel: ' + (error && error.message ? error.message : ''));
         }
     }
 
@@ -1134,6 +1350,193 @@ class HeladeriaApp {
 
     verVentasTotales() {
         this.mostrarInfo(`Las ventas acumuladas son: <strong>$${this.ventasTotales.toFixed(2)}</strong>`);
+    }
+
+    // ============================================
+    // VENTAS DIARIAS
+    // ============================================
+
+    renderVentasDiarias() {
+        const container = this.elementos.resumenVentasDiarias;
+        if (!container) return;
+
+        const filtroFecha = this.elementos.filtroFechaVentas ? this.elementos.filtroFechaVentas.value : '';
+
+        // Agrupar ventas por día
+        const porDia = {};
+        this.ventas.forEach(venta => {
+            const fecha = new Date(venta.fecha);
+            const dia = fecha.toLocaleDateString('es-AR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            const diaKey = fecha.toISOString().slice(0, 10); // YYYY-MM-DD para filtrar
+
+            if (filtroFecha && diaKey !== filtroFecha) return;
+
+            if (!porDia[dia]) porDia[dia] = { total: 0, cantidad: 0 };
+            porDia[dia].total += venta.total;
+            porDia[dia].cantidad++;
+        });
+
+        const dias = Object.keys(porDia);
+        if (dias.length === 0) {
+            container.innerHTML = '<p class="empty-state">No hay ventas registradas' + (filtroFecha ? ' para esta fecha.' : '.') + '</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        // Ordenar por fecha descendente
+        const diasOrdenados = dias.sort((a, b) => {
+            const [da, ma, ya] = a.split('/'); const [db, mb, yb] = b.split('/');
+            return new Date(`${yb}-${mb}-${db}`) - new Date(`${ya}-${ma}-${da}`);
+        });
+
+        diasOrdenados.forEach(dia => {
+            const d = porDia[dia];
+            const card = document.createElement('div');
+            card.className = 'venta-dia-card';
+            card.innerHTML = `
+                <div class="venta-dia-fecha">📅 ${dia}</div>
+                <div class="venta-dia-info">
+                    <span class="venta-dia-count">${d.cantidad} venta${d.cantidad !== 1 ? 's' : ''}</span>
+                    <span class="venta-dia-total">$${d.total.toFixed(2)}</span>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    renderHistorialVentas() {
+        const tbody = this.elementos.bodyHistorialVentas;
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (this.ventas.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="4" style="text-align:center;color:#888;padding:16px">No hay ventas registradas</td>';
+            tbody.appendChild(tr);
+            return;
+        }
+
+        // Mostrar desde la más reciente
+        const ventasOrdenadas = [...this.ventas].reverse();
+        ventasOrdenadas.forEach((venta, i) => {
+            const idx = this.ventas.length - 1 - i; // índice real en this.ventas
+            const tr = document.createElement('tr');
+            const fecha = new Date(venta.fecha);
+            const fechaStr = fecha.toLocaleDateString('es-AR') + ' ' + fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+            const desc = venta.items && venta.items.length > 0
+                ? (venta.items.length === 1 ? venta.items[0].descripcion : `${venta.items[0].descripcion} (+${venta.items.length - 1} más)`)
+                : 'Venta manual';
+            tr.innerHTML = `
+                <td style="font-size:0.9em;">${fechaStr}</td>
+                <td>${desc}</td>
+                <td style="font-weight:600;color:var(--color-primary);">$${venta.total.toFixed(2)}</td>
+                <td style="display:flex;gap:6px;">
+                    <button class="btn btn-info btn-small btn-edit-v" title="Editar">✏️</button>
+                    <button class="btn btn-danger btn-small btn-del-v" title="Eliminar">✕</button>
+                </td>
+            `;
+            tr.querySelector('.btn-edit-v').addEventListener('click', () => this.abrirEditarVenta(idx));
+            tr.querySelector('.btn-del-v').addEventListener('click', () => this.eliminarVenta(idx));
+            tbody.appendChild(tr);
+        });
+    }
+
+    abrirEditarVenta(idx) {
+        const venta = this.ventas[idx];
+        if (!venta) return;
+        const fecha = new Date(venta.fecha);
+        // Formatear para datetime-local (YYYY-MM-DDTHH:MM)
+        const fechaLocal = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        this.elementos.editVentaIdx.value = idx;
+        this.elementos.editVentaDesc.value = venta.items && venta.items.length > 0 ? venta.items[0].descripcion : '';
+        this.elementos.editVentaTotal.value = venta.total;
+        this.elementos.editVentaFecha.value = fechaLocal;
+        this.elementos.modalEditarVenta.classList.add('active');
+    }
+
+    guardarEdicionVenta() {
+        const idx = parseInt(this.elementos.editVentaIdx.value);
+        const venta = this.ventas[idx];
+        if (!venta) return;
+
+        const desc = this.elementos.editVentaDesc.value.trim();
+        const total = parseFloat(this.elementos.editVentaTotal.value);
+        const fecha = this.elementos.editVentaFecha.value;
+
+        if (!desc || isNaN(total) || !fecha) {
+            this.mostrarError('Por favor complete todos los campos');
+            return;
+        }
+
+        // Recalcular ventasTotales
+        this.ventasTotales -= venta.total;
+        this.ventasTotales += total;
+
+        venta.total = total;
+        venta.fecha = new Date(fecha).toISOString();
+        if (venta.items && venta.items.length > 0) {
+            venta.items[0].descripcion = desc;
+        } else {
+            venta.items = [{ descripcion: desc, precio: total }];
+        }
+
+        this.guardarDatos();
+        this.cerrarModal('editarVenta');
+        this.renderHistorialVentas();
+        this.renderVentasDiarias();
+        this.mostrarInfo('✅ Venta actualizada correctamente');
+    }
+
+    eliminarVenta(idx) {
+        this.mostrarConfirmacion('¿Eliminar esta venta del historial?', () => {
+            this.ventasTotales -= this.ventas[idx].total;
+            if (this.ventasTotales < 0) this.ventasTotales = 0;
+            this.ventas.splice(idx, 1);
+            this.guardarDatos();
+            this.renderHistorialVentas();
+            this.renderVentasDiarias();
+        });
+    }
+
+    agregarVentaManual() {
+        const desc = this.elementos.ventaManualDesc ? this.elementos.ventaManualDesc.value.trim() : '';
+        const precio = parseFloat(this.elementos.ventaManualPrecio ? this.elementos.ventaManualPrecio.value : '');
+        const fechaStr = this.elementos.ventaManualFecha ? this.elementos.ventaManualFecha.value : '';
+
+        if (!desc || isNaN(precio) || precio <= 0 || !fechaStr) {
+            this.mostrarError('Complete todos los campos para agregar la venta manual');
+            return;
+        }
+
+        const venta = {
+            fecha: new Date(fechaStr).toISOString(),
+            total: precio,
+            items: [{ descripcion: desc, precio: precio }]
+        };
+
+        this.ventas.push(venta);
+        this.ventasTotales += precio;
+        this.guardarDatos();
+
+        // Limpiar
+        this.elementos.ventaManualDesc.value = '';
+        this.elementos.ventaManualPrecio.value = '';
+        this.elementos.ventaManualFecha.value = '';
+
+        this.renderHistorialVentas();
+        this.renderVentasDiarias();
+        this.mostrarInfo('✅ Venta manual agregada correctamente');
+    }
+
+    limpiarHistorial() {
+        this.mostrarConfirmacion('¿Estás seguro de que deseas eliminar TODO el historial de ventas? Esta acción no se puede deshacer.', () => {
+            this.ventas = [];
+            this.ventasTotales = 0;
+            this.guardarDatos();
+            this.renderHistorialVentas();
+            this.renderVentasDiarias();
+            this.mostrarInfo('Historial eliminado');
+        });
     }
 
     imprimirTicket() {
@@ -1400,7 +1803,9 @@ class HeladeriaApp {
             confirmacion: this.elementos.modalConfirmacion,
             info: this.elementos.modalInfo,
             error: this.elementos.modalError,
-            resumen: this.elementos.modalResumen
+            resumen: this.elementos.modalResumen,
+            editarArticulo: this.elementos.modalEditarArticulo,
+            editarVenta: this.elementos.modalEditarVenta,
         };
         if (modales[tipo]) {
             modales[tipo].classList.remove('active');
@@ -1415,13 +1820,31 @@ class HeladeriaApp {
 
     // Cerrar modales al hacer click fuera
     setupModalEvents() {
-        [this.elementos.modalConfirmacion, this.elementos.modalInfo, this.elementos.modalError, this.elementos.modalResumen].forEach(modal => {
+        const todosModales = [
+            this.elementos.modalConfirmacion,
+            this.elementos.modalInfo,
+            this.elementos.modalError,
+            this.elementos.modalResumen,
+            this.elementos.modalEditarArticulo,
+            this.elementos.modalEditarVenta,
+        ].filter(Boolean);
+
+        todosModales.forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.classList.remove('active');
                 }
             });
         });
+    }
+
+    // Inicializar fecha de venta manual con la fecha/hora actual
+    inicializarFechaVentaManual() {
+        if (this.elementos.ventaManualFecha) {
+            const ahora = new Date();
+            const local = new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            this.elementos.ventaManualFecha.value = local;
+        }
     }
 }
 
@@ -1437,6 +1860,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const app = new HeladeriaApp();
             app.setupModalEvents();
+            app.inicializarFechaVentaManual();
 
             // Forzar una actualización de la UI después de un pequeño retraso
             // para asegurar que todos los elementos del DOM estén listos

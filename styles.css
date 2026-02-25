@@ -1062,3 +1062,172 @@ body {
         font-size: 1em;
     }
 }
+
+/* ============================================
+   BUSCADOR DE PRODUCTOS ENVASADOS
+   ============================================ */
+
+.product-search-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 10px 16px;
+    background: #f8f8f8;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--border-radius);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.product-search-wrapper:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(231, 50, 56, 0.1);
+    background: #fff;
+}
+
+.search-icon {
+    font-size: 1.2em;
+    flex-shrink: 0;
+}
+
+.product-search-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 0.95em;
+    font-family: var(--font-body);
+    color: var(--color-text);
+    outline: none;
+}
+
+.product-search-input::placeholder {
+    color: #b0bec5;
+    font-style: italic;
+}
+
+/* ============================================
+   VENTAS DIARIAS
+   ============================================ */
+
+.ventas-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.ventas-header-row h2 {
+    margin-bottom: 0;
+}
+
+.ventas-header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.date-filter-input {
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    font-size: 0.9em;
+    font-family: var(--font-body);
+    background: white;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.date-filter-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(231,50,56,0.1);
+}
+
+.ventas-diarias-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.venta-dia-card {
+    background: white;
+    border: 1px solid var(--color-border);
+    border-left: 4px solid var(--color-primary);
+    border-radius: var(--border-radius);
+    padding: 16px 20px;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s, transform 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.venta-dia-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-3px);
+}
+
+.venta-dia-fecha {
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 0.95em;
+    font-family: var(--font-heading);
+}
+
+.venta-dia-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.venta-dia-count {
+    font-size: 0.85em;
+    color: var(--color-text-light);
+}
+
+.venta-dia-total {
+    font-size: 1.25em;
+    font-weight: 700;
+    color: var(--color-primary);
+    font-family: var(--font-heading);
+}
+
+/* ============================================
+   MODAL EDICIÓN (más ancho)
+   ============================================ */
+
+.modal-edit {
+    max-width: 460px;
+}
+
+.modal-edit .form-group input {
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 0.95em;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    transition: 0.2s;
+}
+
+.modal-edit .form-group input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(231,50,56,0.1);
+}
+
+.modal-edit .modal-buttons {
+    margin-top: 20px;
+}
+
+@media (max-width: 600px) {
+    .ventas-header-row {
+        flex-direction: column;
+    }
+    .ventas-diarias-container {
+        grid-template-columns: 1fr;
+    }
+}

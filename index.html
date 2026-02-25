@@ -51,6 +51,7 @@
                 <button class="tab-button active" data-tab="tab-config">⚙️ Configuración</button>
                 <button class="tab-button" data-tab="tab-compra">🛒 Compra / Venta</button>
                 <button class="tab-button" data-tab="tab-stock">📦 Stock e Inventario</button>
+                <button class="tab-button" data-tab="tab-ventas">📅 Ventas</button>
             </div>
 
             <!-- PESTAÑA: CONFIGURACIÓN -->
@@ -232,18 +233,21 @@
                     <section class="section">
                         <h2>📦 Productos Envasados Disponibles</h2>
 
+                        <!-- Buscador de productos -->
+                        <div class="product-search-wrapper">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="buscadorProductos" placeholder="Buscar producto por nombre..."
+                                autocomplete="off" class="product-search-input">
+                        </div>
+
                         <!-- Campo de escaneo de código de barras -->
                         <div class="barcode-scanner-wrapper">
                             <label for="barcode-input-gelato" class="barcode-label">
                                 <span class="barcode-icon">📊</span> Escanear código de barras:
                             </label>
-                            <input
-                                type="text"
-                                id="barcode-input-gelato"
-                                placeholder="Escanea o escribe el código... (presiona Enter)"
-                                autocomplete="off"
-                                class="barcode-input"
-                            >
+                            <input type="text" id="barcode-input-gelato"
+                                placeholder="Escanea o escribe el código... (presiona Enter)" autocomplete="off"
+                                class="barcode-input">
                         </div>
 
                         <div id="gridProductosEnvasados" class="products-grid">
@@ -374,6 +378,75 @@
                     </div>
                 </section>
             </div>
+
+            <!-- PESTAÑA: VENTAS -->
+            <div id="tab-ventas" class="tab-content">
+
+                <!-- Resumen ventas del día -->
+                <section class="section">
+                    <div class="ventas-header-row">
+                        <div>
+                            <h2>📅 Ventas Diarias</h2>
+                            <p class="section-subtitle">Resumen de ventas agrupadas por día.</p>
+                        </div>
+                        <div class="ventas-header-actions">
+                            <input type="date" id="filtroFechaVentas" class="date-filter-input">
+                            <button id="btnFiltrarVentas" class="btn btn-info">🔍 Filtrar</button>
+                            <button id="btnMostrarTodasVentas" class="btn btn-secondary">📋 Todas</button>
+                        </div>
+                    </div>
+
+                    <div id="resumenVentasDiarias" class="ventas-diarias-container">
+                        <!-- Se llena vía JS -->
+                        <p class="empty-state">No hay ventas registradas.</p>
+                    </div>
+                </section>
+
+                <!-- Agregar venta manual -->
+                <section class="section">
+                    <h2>➕ Agregar Venta Manual</h2>
+                    <p class="section-subtitle">Registra una venta manualmente en el historial.</p>
+
+                    <div class="add-product-form">
+                        <div class="form-group">
+                            <label>Descripción:</label>
+                            <input type="text" id="ventaManualDesc" placeholder="Ej: Helado de vainilla">
+                        </div>
+                        <div class="form-group">
+                            <label>Precio ($):</label>
+                            <input type="number" id="ventaManualPrecio" placeholder="0.00" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha:</label>
+                            <input type="datetime-local" id="ventaManualFecha">
+                        </div>
+                        <button id="btnAgregarVentaManual" class="btn btn-success">➕ Agregar</button>
+                    </div>
+                </section>
+
+                <!-- Historial completo -->
+                <section class="section">
+                    <div class="ventas-header-row">
+                        <h2>🧾 Historial de Ventas</h2>
+                        <button id="btnLimpiarHistorial" class="btn btn-danger">🗑️ Limpiar Historial</button>
+                    </div>
+                    <div class="tabla-container" style="margin-top: 15px;">
+                        <table class="tabla-carrito" id="tablaHistorialVentas">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Descripción</th>
+                                    <th>Total</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bodyHistorialVentas">
+                                <!-- Se llena vía JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
         </div>
     </div>
 
@@ -408,6 +481,58 @@
             <p id="textoError"></p>
             <div class="modal-buttons">
                 <button id="btnCerrarError" class="btn btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edición de Artículo -->
+    <div id="modalEditarArticulo" class="modal">
+        <div class="modal-content modal-edit">
+            <h2>✏️ Editar Artículo</h2>
+            <input type="hidden" id="editArticuloId">
+            <div class="form-group" style="margin-bottom:14px;">
+                <label>Nombre del Producto:</label>
+                <input type="text" id="editArticuloNombre" placeholder="Nombre...">
+            </div>
+            <div class="form-group" style="margin-bottom:14px;">
+                <label>Precio ($):</label>
+                <input type="number" id="editArticuloPrecio" placeholder="0.00" step="0.01" min="0">
+            </div>
+            <div class="form-group" style="margin-bottom:14px;">
+                <label>Stock:</label>
+                <input type="number" id="editArticuloStock" placeholder="0" min="0">
+            </div>
+            <div class="form-group" style="margin-bottom:14px;">
+                <label>Código de Barras:</label>
+                <input type="text" id="editArticuloBarcode" placeholder="Código...">
+            </div>
+            <div class="modal-buttons">
+                <button id="btnGuardarEditArticulo" class="btn btn-success">💾 Guardar</button>
+                <button id="btnCancelarEditArticulo" class="btn btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edición de Venta -->
+    <div id="modalEditarVenta" class="modal">
+        <div class="modal-content modal-edit">
+            <h2>✏️ Editar Venta</h2>
+            <input type="hidden" id="editVentaIdx">
+            <div class="form-group" style="margin-bottom:14px;">
+                <label>Descripción (primer ítem):</label>
+                <input type="text" id="editVentaDesc" placeholder="Descripción...">
+            </div>
+            <div class="form-group" style="margin-bottom:14px;">
+                <label>Total ($):</label>
+                <input type="number" id="editVentaTotal" placeholder="0.00" step="0.01" min="0">
+            </div>
+            <div class="form-group" style="margin-bottom:14px;">
+                <label>Fecha:</label>
+                <input type="datetime-local" id="editVentaFecha">
+            </div>
+            <div class="modal-buttons">
+                <button id="btnGuardarEditVenta" class="btn btn-success">💾 Guardar</button>
+                <button id="btnCancelarEditVenta" class="btn btn-secondary">Cancelar</button>
             </div>
         </div>
     </div>
